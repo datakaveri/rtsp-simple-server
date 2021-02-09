@@ -21,7 +21,7 @@ writeTimeout: 10s
 readBufferCount: 512
 
 # enable Prometheus-compatible metrics on port 9998.
-metrics: no
+metrics: yes
 # enable pprof on port 9999 to monitor performances.
 pprof: no
 

@@ -633,6 +633,8 @@ func (c *Client) recordStart() {
 		}(),
 		*c.conn.SetuppedTracksProtocol())
 
+		c.stats.Streams = append(c.stats.Streams, c.path.Name())
+
 	if c.path.Conf().RunOnPublish != "" {
 		c.onPublishCmd = externalcmd.New(c.path.Conf().RunOnPublish, c.path.Conf().RunOnPublishRestart, externalcmd.Environment{
 			Path: c.path.Name(),
@@ -642,6 +644,22 @@ func (c *Client) recordStart() {
 }
 
 func (c *Client) recordStop() {
+	c.log(logger.Info, "is stopped publishing to path '%s', %d %s with %s",
+		c.path.Name(),
+		c.conn.SetuppedTracksLen(),
+		func() string {
+			if c.conn.SetuppedTracksLen() == 1 {
+				return "track"
+			}
+			return "tracks"
+		}(),
+		*c.conn.SetuppedTracksProtocol())
+	
+		for i := len(c.stats.Streams) - 1; i >= 0; i-- {
+			if c.stats.Streams[i] == c.path.Name() {
+				c.stats.Streams = append(c.stats.Streams[:i], c.stats.Streams[i+1:]...)
+			}
+		}
 	if c.path.Conf().RunOnPublish != "" {
 		c.onPublishCmd.Close()
 	}

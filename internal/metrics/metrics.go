@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"sync/atomic"
 	"time"
+	"strings"
 
 	"github.com/aler9/rtsp-simple-server/internal/logger"
 	"github.com/aler9/rtsp-simple-server/internal/stats"
@@ -89,6 +90,7 @@ func (m *Metrics) onMetrics(w http.ResponseWriter, req *http.Request) {
 	countSourcesRtspRunning := atomic.LoadInt64(m.stats.CountSourcesRtspRunning)
 	countSourcesRtmp := atomic.LoadInt64(m.stats.CountSourcesRtmp)
 	countSourcesRtmpRunning := atomic.LoadInt64(m.stats.CountSourcesRtmpRunning)
+	streamList := m.stats.Streams
 
 	out := ""
 	out += formatMetric("rtsp_clients{state=\"idle\"}",
@@ -105,6 +107,7 @@ func (m *Metrics) onMetrics(w http.ResponseWriter, req *http.Request) {
 		countSourcesRtmp-countSourcesRtmpRunning, nowUnix)
 	out += formatMetric("rtsp_sources{type=\"rtmp\",state=\"running\"}",
 		countSourcesRtmpRunning, nowUnix)
+	out += "rtsp_streams{type=\"streams\"} " + strings.Join(streamList, ",") + " " + strconv.FormatInt(nowUnix, 10) + "\n"
 
 	w.WriteHeader(http.StatusOK)
 	io.WriteString(w, out)
