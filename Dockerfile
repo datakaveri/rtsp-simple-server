@@ -2,9 +2,8 @@ FROM --platform=linux/amd64 golang:1.15-alpine3.12 AS build
 
 RUN apk add --no-cache git
 WORKDIR /s
-COPY go.mod go.sum ./
+RUN git clone https://github.com/datakaveri/rtsp-simple-server .
 RUN go mod download
-COPY . ./
 ARG VERSION
 ARG OPTS
 RUN export CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
