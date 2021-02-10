@@ -603,6 +603,12 @@ func (c *Client) playStart() {
 		}(),
 		*c.conn.SetuppedTracksProtocol())
 
+	for i := len(c.stats.Streams) - 1; i >= 0; i-- {
+		if c.stats.Streams[i].StreamName == c.path.Name() {
+			c.stats.Streams[i].ClientsCount++
+		}
+	}
+
 	if c.path.Conf().RunOnRead != "" {
 		c.onReadCmd = externalcmd.New(c.path.Conf().RunOnRead, c.path.Conf().RunOnReadRestart, externalcmd.Environment{
 			Path: c.path.Name(),
@@ -612,6 +618,23 @@ func (c *Client) playStart() {
 }
 
 func (c *Client) playStop() {
+	c.log(logger.Info, "is stopped reading from path '%s', %d %s with %s",
+		c.path.Name(),
+		c.conn.SetuppedTracksLen(),
+		func() string {
+			if c.conn.SetuppedTracksLen() == 1 {
+				return "track"
+			}
+			return "tracks"
+		}(),
+		*c.conn.SetuppedTracksProtocol())
+
+	for i := len(c.stats.Streams) - 1; i >= 0; i-- {
+		if c.stats.Streams[i].StreamName == c.path.Name() {
+			c.stats.Streams[i].ClientsCount--
+		}
+	}
+
 	if c.path.Conf().RunOnRead != "" {
 		c.onReadCmd.Close()
 	}
@@ -633,7 +656,10 @@ func (c *Client) recordStart() {
 		}(),
 		*c.conn.SetuppedTracksProtocol())
 
-		c.stats.Streams = append(c.stats.Streams, c.path.Name())
+		var streamStatsData stats.StreamStatsData
+		streamStatsData.StreamName = c.path.Name()
+		streamStatsData.ClientsCount = 0
+		c.stats.Streams = append(c.stats.Streams, streamStatsData)
 
 	if c.path.Conf().RunOnPublish != "" {
 		c.onPublishCmd = externalcmd.New(c.path.Conf().RunOnPublish, c.path.Conf().RunOnPublishRestart, externalcmd.Environment{
@@ -656,7 +682,7 @@ func (c *Client) recordStop() {
 		*c.conn.SetuppedTracksProtocol())
 	
 		for i := len(c.stats.Streams) - 1; i >= 0; i-- {
-			if c.stats.Streams[i] == c.path.Name() {
+			if c.stats.Streams[i].StreamName == c.path.Name() {
 				c.stats.Streams = append(c.stats.Streams[:i], c.stats.Streams[i+1:]...)
 			}
 		}

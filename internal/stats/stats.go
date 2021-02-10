@@ -5,6 +5,11 @@ func ptrInt64() *int64 {
 	return &v
 }
 
+type StreamStatsData struct {
+	StreamName		string
+	ClientsCount	int64
+}
+
 // Stats contains statistics.
 type Stats struct {
 	// use pointers to avoid a crash on 32bit platforms
@@ -16,7 +21,7 @@ type Stats struct {
 	CountSourcesRtspRunning *int64
 	CountSourcesRtmp        *int64
 	CountSourcesRtmpRunning *int64
-	Streams					[]string
+	Streams					[]StreamStatsData
 }
 
 // New allocates a Stats.
@@ -29,7 +34,7 @@ func New() *Stats {
 		CountSourcesRtspRunning: ptrInt64(),
 		CountSourcesRtmp:        ptrInt64(),
 		CountSourcesRtmpRunning: ptrInt64(),
-		Streams:				 []string{},
+		Streams:				 []StreamStatsData{},
 	}
 }
 

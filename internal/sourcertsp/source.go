@@ -22,6 +22,7 @@ type Parent interface {
 	OnSourceSetReady(gortsplib.Tracks)
 	OnSourceSetNotReady()
 	OnFrame(int, gortsplib.StreamType, []byte)
+	Name() string
 }
 
 // Source is a RTSP source.
@@ -149,6 +150,13 @@ func (s *Source) runInner() bool {
 	tracks := conn.Tracks()
 
 	s.log(logger.Info, "ready")
+
+	// Add path to stats
+	var streamStatsData stats.StreamStatsData
+	streamStatsData.StreamName = s.parent.Name()
+	streamStatsData.ClientsCount = 0
+	s.stats.Streams = append(s.stats.Streams, streamStatsData)
+
 	s.parent.OnSourceSetReady(tracks)
 	defer s.parent.OnSourceSetNotReady()
 
