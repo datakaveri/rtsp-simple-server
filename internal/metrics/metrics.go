@@ -111,7 +111,7 @@ func (m *Metrics) onMetrics(w http.ResponseWriter, req *http.Request) {
 	// Appending streams metrics
 	out += "[\n"
 	for i := 0; i <= len(streamList) - 1; i++ {
-		out += "{\"streamName\":\"" + streamList[i].StreamName + "\"},\"{\"clientCount\":\"" + strconv.FormatInt(streamList[i].ClientsCount, 10) + "\"}"
+		out += "{\"streamName\":\"" + streamList[i].StreamName + ",\"clientCount\":\"" + strconv.FormatInt(streamList[i].ClientsCount, 10) + "\"}"
 		if i < len(streamList) - 1 {
 			out += ",\n"
 		}
