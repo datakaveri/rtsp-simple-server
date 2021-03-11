@@ -1,7 +1,9 @@
 package serverrtsp
 
 import (
+	"crypto/tls"
 	"strconv"
+	"time"
 
 	"github.com/aler9/gortsplib"
 
@@ -28,8 +30,38 @@ type Server struct {
 func New(
 	listenIP string,
 	port int,
-	conf gortsplib.ServerConf,
+	readTimeout time.Duration,
+	writeTimeout time.Duration,
+	readBufferCount int,
+	readBufferSize int,
+	useUDP bool,
+	rtpPort int,
+	rtcpPort int,
+	useTLS bool,
+	serverCert string,
+	serverKey string,
 	parent Parent) (*Server, error) {
+
+	conf := gortsplib.ServerConf{
+		ReadTimeout:     readTimeout,
+		WriteTimeout:    writeTimeout,
+		ReadBufferCount: readBufferCount,
+		ReadBufferSize:  readBufferSize,
+	}
+
+	if useUDP {
+		conf.UDPRTPAddress = listenIP + ":" + strconv.FormatInt(int64(rtpPort), 10)
+		conf.UDPRTCPAddress = listenIP + ":" + strconv.FormatInt(int64(rtcpPort), 10)
+	}
+
+	if useTLS {
+		cert, err := tls.LoadX509KeyPair(serverCert, serverKey)
+		if err != nil {
+			return nil, err
+		}
+
+		conf.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
+	}
 
 	address := listenIP + ":" + strconv.FormatInt(int64(port), 10)
 	srv, err := conf.Serve(address)
@@ -44,13 +76,20 @@ func New(
 		done:   make(chan struct{}),
 	}
 
+	if conf.UDPRTPAddress != "" {
+		parent.Log(logger.Info, "[RTSP/UDP/RTP listener] opened on %s", conf.UDPRTPAddress)
+	}
+
+	if conf.UDPRTCPAddress != "" {
+		parent.Log(logger.Info, "[RTSP/UDP/RTCP listener] opened on %s", conf.UDPRTCPAddress)
+	}
+
 	label := func() string {
 		if conf.TLSConfig != nil {
-			return "TCP/TLS/RTSPS"
+			return "RTSP/TLS"
 		}
-		return "TCP/RTSP"
+		return "RTSP/TCP"
 	}()
-
 	parent.Log(logger.Info, "[%s listener] opened on %s", label, address)
 
 	go s.run()
@@ -65,6 +104,7 @@ func (s *Server) Close() {
 			co.Close()
 		}
 	}()
+
 	s.srv.Close()
 	<-s.done
 }
