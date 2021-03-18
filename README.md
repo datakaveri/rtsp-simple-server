@@ -1,18 +1,20 @@
 
-# rtsp-simple-server
+<h1 align="center">
+    <img src="logo.png" alt="rtsp-simple-server">
+</h1>
 
 _rtsp-simple-server_ is a simple, ready-to-use and zero-dependency RTSP/RTMP server and proxy, a software that allows users to publish, read and proxy live video and audio streams. RTSP is a specification that describes how to perform these operations with the help of a server, that is contacted by both publishers and readers and relays the publisher's streams to the readers.
 
 Features:
 
 * Publish live streams with RTSP (UDP or TCP mode) or RTMP
-* Read live streams with RTSP
+* Read live streams with RTSP or RTMP
 * Pull and serve streams from other RTSP / RTMP servers or cameras, always or on-demand (RTSP proxy)
-* Each stream can have multiple video and audio tracks, encoded with any codec (including H264, H265, VP8, VP9, MPEG2, MP3, AAC, Opus, PCM)
+* Each stream can have multiple video and audio tracks, encoded with any codec (including H264, H265, VP8, VP9, MPEG2, MP3, AAC, Opus, PCM, JPEG)
 * Serve multiple streams at once in separate paths
 * Encrypt streams with TLS (RTSPS)
 * Authenticate readers and publishers
-* Redirect to other RTSP servers (load balancing)
+* Redirect readers to other RTSP servers (load balancing)
 * Run custom commands when clients connect, disconnect, read or publish streams
 * Reload the configuration without disconnecting existing clients (hot reloading)
 * Compatible with Linux, Windows and macOS, does not require any dependency or interpreter, it's a single executable
@@ -28,7 +30,7 @@ Features:
   * [Authentication](#authentication)
   * [Encrypt the configuration](#encrypt-the-configuration)
   * [RTSP proxy mode](#rtsp-proxy-mode)
-  * [RTMP server](#rtmp-server)
+  * [RTMP protocol](#rtmp-protocol)
   * [Publish a webcam](#publish-a-webcam)
   * [Publish a Raspberry Pi Camera](#publish-a-raspberry-pi-camera)
   * [Convert streams to HLS](#convert-streams-to-hls)
@@ -262,15 +264,13 @@ paths:
     sourceOnDemand: yes
 ```
 
-### RTMP server
+### RTMP protocol
 
-RTMP is a protocol that is used to read and publish streams, but is less versatile and less efficient than RTSP (doesn't support UDP, encryption, most RTSP codecs, feedback mechanism). If there is need of receiving streams from a software that supports only RTMP (for instance, OBS Studio and DJI drones), it's possible to turn on a RTMP listener:
+RTMP is a protocol that is used to read and publish streams, but is less versatile and less efficient than RTSP (doesn't support UDP, encryption, doesn't support most RTSP codecs, doesn't support feedback mechanism). It is used when there's need of publishing or reading streams from a software that supports only RTMP (for instance, OBS Studio and DJI drones).
 
-```yml
-rtmpEnable: yes
-```
+At the moment, only the H264 and AAC codecs can be used with the RTMP protocol.
 
-Streams can then be published with the RTMP protocol, for instance with _FFmpeg_:
+Streams can be published or read with the RTMP protocol, for instance with _FFmpeg_:
 
 ```
 ffmpeg -re -stream_loop -1 -i file.ts -c copy -f flv rtmp://localhost/mystream
@@ -287,8 +287,6 @@ Credentials can be provided by appending to the URL the `user` and `pass` parame
 ```
 ffmpeg -re -stream_loop -1 -i file.ts -c copy -f flv rtmp://localhost:8554/mystream?user=myuser&pass=mypass
 ```
-
-At the moment the RTMP listener supports only the H264 and AAC codecs.
 
 ### Publish a webcam
 
@@ -400,12 +398,12 @@ paths:
 
 ### Fallback stream
 
-If no one is publishing to the server, readers can be redirected to a fallback URL that is serving a fallback stream:
+If no one is publishing to the server, readers can be redirected to a fallback path or URL that is serving a fallback stream:
 
 ```yml
 paths:
   withfallback:
-    fallback: rtsp://otherurl/otherpath
+    fallback: /otherpath
 ```
 
 ### Start on boot with systemd

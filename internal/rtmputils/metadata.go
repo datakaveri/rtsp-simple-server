@@ -2,13 +2,11 @@ package rtmputils
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/aler9/gortsplib"
 	"github.com/notedit/rtmp/av"
 	"github.com/notedit/rtmp/codec/h264"
 	"github.com/notedit/rtmp/format/flv/flvio"
-	"github.com/notedit/rtmp/format/rtmp"
 )
 
 const (
@@ -16,8 +14,8 @@ const (
 	codecAAC  = 10
 )
 
-func readMetadata(rconn *rtmp.Conn) (flvio.AMFMap, error) {
-	pkt, err := rconn.ReadPacket()
+func readMetadata(conn *Conn) (flvio.AMFMap, error) {
+	pkt, err := conn.ReadPacket()
 	if err != nil {
 		return nil, err
 	}
@@ -43,41 +41,72 @@ func readMetadata(rconn *rtmp.Conn) (flvio.AMFMap, error) {
 	return ma, nil
 }
 
-// Metadata extracts track informations from a RTMP connection that is publishing.
-func Metadata(conn ConnPair, readTimeout time.Duration) (
-	*gortsplib.Track, *gortsplib.Track, error) {
+// ReadMetadata extracts track informations from a RTMP connection that is publishing.
+func ReadMetadata(conn *Conn) (*gortsplib.Track, *gortsplib.Track, error) {
 	var videoTrack *gortsplib.Track
 	var audioTrack *gortsplib.Track
 
-	// configuration must be completed within readTimeout
-	conn.NConn.SetReadDeadline(time.Now().Add(readTimeout))
-
-	md, err := readMetadata(conn.RConn)
+	md, err := readMetadata(conn)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	hasVideo := false
-	if v, ok := md.GetFloat64("videocodecid"); ok {
-		switch v {
-		case codecH264:
-			hasVideo = true
-		case 0:
-		default:
-			return nil, nil, fmt.Errorf("unsupported video codec %v", v)
+	hasVideo, err := func() (bool, error) {
+		v, ok := md.GetV("videocodecid")
+		if !ok {
+			return false, nil
 		}
 
+		switch vt := v.(type) {
+		case float64:
+			switch vt {
+			case 0:
+				return false, nil
+
+			case codecH264:
+				return true, nil
+			}
+
+		case string:
+			switch vt {
+			case "avc1":
+				return true, nil
+			}
+		}
+
+		return false, fmt.Errorf("unsupported video codec %v", v)
+	}()
+	if err != nil {
+		return nil, nil, err
 	}
 
-	hasAudio := false
-	if v, ok := md.GetFloat64("audiocodecid"); ok {
-		switch v {
-		case codecAAC:
-			hasAudio = true
-		case 0:
-		default:
-			return nil, nil, fmt.Errorf("unsupported audio codec %v", v)
+	hasAudio, err := func() (bool, error) {
+		v, ok := md.GetV("audiocodecid")
+		if !ok {
+			return false, nil
 		}
+
+		switch vt := v.(type) {
+		case float64:
+			switch vt {
+			case 0:
+				return false, nil
+
+			case codecAAC:
+				return true, nil
+			}
+
+		case string:
+			switch vt {
+			case "mp4a":
+				return true, nil
+			}
+		}
+
+		return false, fmt.Errorf("unsupported audio codec %v", v)
+	}()
+	if err != nil {
+		return nil, nil, err
 	}
 
 	if !hasVideo && !hasAudio {
@@ -86,7 +115,7 @@ func Metadata(conn ConnPair, readTimeout time.Duration) (
 
 	for {
 		var pkt av.Packet
-		pkt, err = conn.RConn.ReadPacket()
+		pkt, err = conn.ReadPacket()
 		if err != nil {
 			return nil, nil, err
 		}
@@ -129,4 +158,39 @@ func Metadata(conn ConnPair, readTimeout time.Duration) (
 			return videoTrack, audioTrack, nil
 		}
 	}
+}
+
+// WriteMetadata writes track informations to a RTMP connection that is reading.
+func WriteMetadata(conn *Conn, videoTrack *gortsplib.Track, audioTrack *gortsplib.Track) error {
+	return conn.WritePacket(av.Packet{
+		Type: av.Metadata,
+		Data: flvio.FillAMF0ValMalloc(flvio.AMFMap{
+			{
+				K: "videodatarate",
+				V: float64(0),
+			},
+			{
+				K: "videocodecid",
+				V: func() float64 {
+					if videoTrack != nil {
+						return codecH264
+					}
+					return 0
+				}(),
+			},
+			{
+				K: "audiodatarate",
+				V: float64(0),
+			},
+			{
+				K: "audiocodecid",
+				V: func() float64 {
+					if audioTrack != nil {
+						return codecAAC
+					}
+					return 0
+				}(),
+			},
+		}),
+	})
 }

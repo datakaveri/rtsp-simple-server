@@ -35,12 +35,14 @@ runOnConnectRestart: no
 ###############################################
 # RTSP options
 
+# disable support for the RTSP protocol.
+rtspDisable: no
 # supported RTSP stream protocols.
 # UDP is the most performant, but can cause problems if there's a NAT between
 # server and clients, and doesn't support encryption.
 # TCP is the most versatile, and does support encryption.
 # The handshake is always performed with TCP.
-protocols: [udp, tcp]
+protocols: [tcp]
 # encrypt handshake and TCP streams with TLS (RTSPS).
 # available values are "no", "strict", "optional".
 encryption: no
@@ -58,12 +60,16 @@ serverKey: server.key
 serverCert: server.crt
 # authentication methods.
 authMethods: [basic, digest]
+# read buffer size.
+# this doesn't influence throughput and shouldn't be touched unless the server
+# reports errors about the buffer size.
+readBufferSize: 2048
 
 ###############################################
 # RTMP options
 
-# enable a RTMP listener that allows to receive streams with RTMP.
-rtmpEnable: no
+# disable support for the RTMP protocol.
+rtmpDisable: yes
 # port of the RTMP listener.
 rtmpPort: 1935
 
@@ -86,12 +92,12 @@ paths:
     # * redirect -> the stream is provided by another path or server
     source: record
 
-    # if the source is an RTSP url, this is the protocol that will be used to
+    # if the source is an RTSP URL, this is the protocol that will be used to
     # pull the stream. available options are "automatic", "udp", "tcp".
     # the tcp protocol can help to overcome the error "no UDP packets received recently".
     sourceProtocol: automatic
 
-    # if the source is an RTSP or RTMP url, it will be pulled only when at least
+    # if the source is an RTSP or RTMP URL, it will be pulled only when at least
     # one reader is connected, saving bandwidth.
     sourceOnDemand: no
     # if sourceOnDemand is "yes", readers will be put on hold until the source is
@@ -101,11 +107,12 @@ paths:
     # readers connected and this amount of time has passed.
     sourceOnDemandCloseAfter: 10s
 
-    # if the source is "redirect", this is the RTSP url which clients will be
+    # if the source is "redirect", this is the RTSP URL which clients will be
     # redirected to.
     sourceRedirect:
 
-    # fallback url to redirect clients to when nobody is publishing to this path.
+    # fallback stream to redirect clients to when nobody is publishing to this path.
+    # this can be a relative path  (i.e. /otherstream) or an absolute RTSP URL.
     fallback:
 
     # username required to publish.
@@ -140,7 +147,7 @@ paths:
     # this is terminated with SIGINT when the path is not requested anymore.
     # the path name is available in the RTSP_PATH variable.
     # the server port is available in the RTSP_PORT variable.
-    runOnDemand:
+    runOnDemand: ./script.sh
     # the restart parameter allows to restart the command if it exits suddenly.
     runOnDemandRestart: no
     # readers will be put on hold until the runOnDemand command starts publishing

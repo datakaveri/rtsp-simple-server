@@ -27,16 +27,6 @@ const (
 	pauseAfterAuthError = 2 * time.Second
 )
 
-// ErrNoOnePublishing is a "no one is publishing" error.
-type ErrNoOnePublishing struct {
-	PathName string
-}
-
-// Error implements the error interface.
-func (e ErrNoOnePublishing) Error() string {
-	return fmt.Sprintf("no one is publishing to path '%s'", e.PathName)
-}
-
 func ipEqualOrInRange(ip net.IP, ips []interface{}) bool {
 	for _, item := range ips {
 		switch titem := item.(type) {
@@ -116,9 +106,9 @@ func New(
 	atomic.AddInt64(c.stats.CountClients, 1)
 	c.log(logger.Info, "connected (%s)", func() string {
 		if isTLS {
-			return "encrypted"
+			return "RTSP/TLS"
 		}
-		return "plain"
+		return "RTSP/TCP"
 	}())
 
 	c.wg.Add(1)
@@ -194,7 +184,7 @@ func (c *Client) run() {
 				}
 				return terr.Response, errTerminated
 
-			case ErrNoOnePublishing:
+			case client.ErrNoOnePublishing:
 				return &base.Response{
 					StatusCode: base.StatusNotFound,
 				}, res.Err
@@ -297,6 +287,10 @@ func (c *Client) run() {
 
 			reqPath, _ := base.PathSplitQuery(pathAndQuery)
 
+			// path can end with a slash, remove it
+			// this is needed to support reading mpegts with ffmpeg
+			reqPath = strings.TrimSuffix(reqPath, "/")
+
 			if c.path != nil && reqPath != c.path.Name() {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -304,7 +298,7 @@ func (c *Client) run() {
 			}
 
 			resc := make(chan client.SetupPlayRes)
-			c.parent.OnClientSetupPlay(client.SetupPlayReq{c, reqPath, trackID, req, resc}) //nolint:govet
+			c.parent.OnClientSetupPlay(client.SetupPlayReq{c, reqPath, req, resc}) //nolint:govet
 			res := <-resc
 
 			if res.Err != nil {
@@ -320,7 +314,7 @@ func (c *Client) run() {
 					}
 					return terr.Response, errTerminated
 
-				case ErrNoOnePublishing:
+				case client.ErrNoOnePublishing:
 					return &base.Response{
 						StatusCode: base.StatusNotFound,
 					}, res.Err
@@ -333,6 +327,12 @@ func (c *Client) run() {
 			}
 
 			c.path = res.Path
+
+			if trackID >= len(res.Tracks) {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, fmt.Errorf("track %d does not exist", trackID)
+			}
 
 		default: // record
 			reqPathAndQuery, ok := req.URL.RTSPPathAndQuery()
@@ -691,8 +691,8 @@ func (c *Client) recordStop() {
 	}
 }
 
-// OnReaderFrame implements path.Reader.
-func (c *Client) OnReaderFrame(trackID int, streamType gortsplib.StreamType, buf []byte) {
+// OnIncomingFrame implements path.Reader.
+func (c *Client) OnIncomingFrame(trackID int, streamType gortsplib.StreamType, buf []byte) {
 	if !c.conn.HasSetuppedTrack(trackID) {
 		return
 	}

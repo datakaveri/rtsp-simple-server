@@ -47,6 +47,7 @@ func decrypt(key string, byts []byte) ([]byte, error) {
 
 // Conf is the main program configuration.
 type Conf struct {
+	// general
 	LogLevel              string                          `yaml:"logLevel"`
 	LogLevelParsed        logger.Level                    `yaml:"-" json:"-"`
 	LogDestinations       []string                        `yaml:"logDestinations"`
@@ -55,12 +56,14 @@ type Conf struct {
 	ListenIP              string                          `yaml:"listenIP"`
 	ReadTimeout           time.Duration                   `yaml:"readTimeout"`
 	WriteTimeout          time.Duration                   `yaml:"writeTimeout"`
-	ReadBufferCount       uint64                          `yaml:"readBufferCount"`
+	ReadBufferCount       int                             `yaml:"readBufferCount"`
 	Metrics               bool                            `yaml:"metrics"`
 	Pprof                 bool                            `yaml:"pprof"`
 	RunOnConnect          string                          `yaml:"runOnConnect"`
 	RunOnConnectRestart   bool                            `yaml:"runOnConnectRestart"`
 
+	// rtsp
+	RTSPDisable       bool                                  `yaml:"rtspDisable"`
 	Protocols         []string                              `yaml:"protocols"`
 	ProtocolsParsed   map[gortsplib.StreamProtocol]struct{} `yaml:"-" json:"-"`
 	Encryption        string                                `yaml:"encryption"`
@@ -73,10 +76,13 @@ type Conf struct {
 	ServerCert        string                                `yaml:"serverCert"`
 	AuthMethods       []string                              `yaml:"authMethods"`
 	AuthMethodsParsed []headers.AuthMethod                  `yaml:"-" json:"-"`
+	ReadBufferSize    int                                   `yaml:"readBufferSize"`
 
-	RTMPEnable bool `yaml:"rtmpEnable"`
-	RTMPPort   int  `yaml:"rtmpPort"`
+	// rtmp
+	RTMPDisable bool `yaml:"rtmpDisable"`
+	RTMPPort    int  `yaml:"rtmpPort"`
 
+	// path
 	Paths map[string]*PathConf `yaml:"paths"`
 }
 
